@@ -17,9 +17,9 @@ using namespace std;
 
 /*
 Compile:
-g++ -std=c++11 -Wall -Wextra ex6-loop-matrix-reduction.cpp -o exe -Wno-unknown-pragmas && ./exe
+g++ -std=c++11 -Wall -Wextra ex9-mandelbrot.cpp -o exe -DNUM_POINTS=1000 -Wno-unknown-pragmas && ./exe
 OpenMP Compile:
-g++ -std=c++11 -Wall -Wextra -fopenmp ex6-loop-matrix-reduction.cpp -o exe && ./exe
+g++ -std=c++11 -Wall -Wextra -fopenmp ex9-mandelbrot.cpp -o exe -DNUM_POINTS=1000 && ./exe
 */
 
 #define R_minX -2
@@ -32,75 +32,56 @@ g++ -std=c++11 -Wall -Wextra -fopenmp ex6-loop-matrix-reduction.cpp -o exe && ./
 #ifndef LIMIT
     #define LIMIT 100
 #endif
+#ifndef UPPER_BOUND
+    #define UPPER_BOUND 5 // for the norm squared 
+#endif
 
-typedef float myprec;
-#define Comp std::complex<float>
+typedef double myprec;
+#define Comp std::complex<myprec>
 
-// int Mandelbrot(Comp z0,uint limit = 100){
-//     // Comp z = z0;
-//     Comp z(0,0);
-//     for (uint i = 0; i < limit; ++i) {
-//         if (norm(z) > 4.0)
-//             return i;
-//         z = z*z + z0;
-//     }
-//     return limit;
-// }
-int mandelbrot(double real, double imag) {
-    int limit = 100;
-    double zReal = real;
-    double zImag = imag;
-
-    for (int i = 0; i < limit; ++i) {
-        double r2 = zReal * zReal;
-        double i2 = zImag * zImag;
-        
-        if (r2 + i2 > 4.0) return i;
-
-        zImag = 2.0 * zReal * zImag + imag;
-        zReal = r2 - i2 + real;
+int Mandelbrot(Comp z0){
+    // Comp z = z0;
+    Comp z(0,0);
+    for (int i = 0; i < LIMIT; ++i) {
+        if (norm(z) > UPPER_BOUND)
+            return i;
+        z = z*z + z0;
     }
-    return limit;
+    return LIMIT;
 }
-
 
 int main(void){
     InfoOpenMP();
 
+    int j,k;
     SimpleTimer _t;
-    uint N;
-    uint maxIt;
 
     cout<<"Part 1: fill the Mandelbrot Matrix"<<endl;
 
-    // Comp z0(R_minX,R_minY);
-    // Comp dz_re((R_maxX-R_minX)/N,0);
-    // Comp dz_im(0,(R_maxY-R_minY)/N);
-    // z0 = z0+(dz_re+dz_im)*Comp(0.5,0);
-    float dz_re =(R_maxX-R_minX)/NUM_POINTS;
-    float dz_im =(R_maxY-R_minY)/NUM_POINTS;
+    Comp z0(R_minX,R_minY);
+    Comp dz_re((myprec)(R_maxX-R_minX)/NUM_POINTS,0);
+    Comp dz_im(0,(myprec)(R_maxY-R_minY)/NUM_POINTS);
+    z0 = z0+(dz_re+dz_im)*Comp(0.5,0);
 
-    uint MandelMat[NUM_POINTS][NUM_POINTS];
-    VectorMemUsage(NUM_POINTS*NUM_POINTS*sizeof(uint),"MandelMat");
+    cout<<"z0="<<z0<<", |z0|^2="<<norm(z0)<<endl;
+    cout<<"dz_re="<<dz_re<<", |dz_re|^2="<<norm(dz_re)<<endl;
+    cout<<"dz_im="<<dz_im<<", |dz_im|^2="<<norm(dz_im)<<endl;
+
+    int MandelMat[NUM_POINTS][NUM_POINTS];
+    VectorMemUsage(NUM_POINTS*NUM_POINTS*sizeof(int),"MandelMat");
 
     _t.start("Compute mandelbrot region");
-    for(uint j = 0; j < NUM_POINTS; j++)
-        for(uint k = 0; k < NUM_POINTS; k++){
-            // MandelMat[j][k] = Mandelbrot(
-            //     z0+Comp(j,0)*dz_re+Comp(k,0)*dz_im,maxIt
-            // );
-            // MandelMat[j][k] = Mandelbrot(
-            //     Comp(R_minX+(j+0.5)*dz_re,R_minY+(k+0.5)*dz_im)
-            // );
-            MandelMat[j][k] = mandelbrot(
-                R_minX+(j+0.5)*dz_re,R_minY+(k+0.5)*dz_im
+    for(j = 0; j < NUM_POINTS; j++)
+        for(k = 0; k < NUM_POINTS; k++){
+            MandelMat[j][k] = Mandelbrot(
+                z0+Comp(j,0)*dz_re+Comp(k,0)*dz_im
             );
         }
     _t.stop(); _t.print();
 
     ofstream output_file("./mandelbrot.dat");
-    for(uint j = 0; j < NUM_POINTS; j++){
-        for(uint k = 0; k < NUM_POINTS; k++)
+    for(j = 0; j < NUM_POINTS; j++){
+        for(k = 0; k < NUM_POINTS; k++)
             output_file<<MandelMat[j][k]<<"  ";
         output_file<<"\n";
     }
